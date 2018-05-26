@@ -9,7 +9,7 @@ using cv::Vec3f;
 using cv::Rect;
 using cv::Scalar;
 using cv::Point;
-using cv::Point2f;
+using cv::Point2d;
 using std::string;
 using std::vector;
 using std::cout;
@@ -20,6 +20,7 @@ using std::uniform_int_distribution;
 
 default_random_engine SpreadsheetRecognition::e;
 
+#include "Stopwatch.h"
 void SpreadsheetRecognition::execute(const SpreadsheetRecognitionParameters &para) {
     // preprocess
     cv::cvtColor(mSrc, mSrcGray, CV_RGB2GRAY);
@@ -45,13 +46,13 @@ void SpreadsheetRecognition::execute(const SpreadsheetRecognitionParameters &par
 #endif
     probFilterLines(para.probFilterLinesTryCount, para.probFilterLinesExpectation);
 #ifdef DEBUG
-    drawLines(resultView, mHLines, Scalar(255, 0, 0));
-    drawLines(resultView, mVLines, Scalar(255, 0, 0));
+    //drawLines(resultView, mHLines, Scalar(255, 0, 0));
+    //drawLines(resultView, mVLines, Scalar(255, 0, 0));
 #endif
-    clusterFilterLines(mHLines, para.clusterFilterLinesDeltaRho);
-    clusterFilterLines(mVLines, para.clusterFilterLinesDeltaRho);
-    drawLines(resultView, mHLines, Scalar(0, 255, 0));
-    drawLines(resultView, mVLines, Scalar(0, 255, 0));
+    //clusterFilterLines(mHLines, para.clusterFilterLinesDeltaRho);
+    //clusterFilterLines(mVLines, para.clusterFilterLinesDeltaRho);
+    //drawLines(resultView, mHLines, Scalar(0, 255, 0));
+    //drawLines(resultView, mVLines, Scalar(0, 255, 0));
 }
 
 void SpreadsheetRecognition::showResult(const String &windowName) {
@@ -82,19 +83,18 @@ void SpreadsheetRecognition::output(const string &dir) {
             cv::imwrite(oss.str(), mSrc(spreadsheet[i][j]));
         }
     }
-
 }
 
 void SpreadsheetRecognition::drawLines(Mat &img, vector<Vec2f> &lines, const Scalar &color) {
     for (size_t i = 0; i < lines.size(); i++) {
         float rho = lines[i][0], theta = lines[i][1];
         Point pt1, pt2;
-        double costheta = cos(theta), sintheta = sin(theta);
-        double x0 = rho * costheta, y0 = rho * sintheta;
-        pt1.x = cvRound(x0 + 1000 * (-sintheta));
-        pt1.y = cvRound(y0 + 1000 * (costheta));
-        pt2.x = cvRound(x0 - 1000 * (-sintheta));
-        pt2.y = cvRound(y0 - 1000 * (costheta));
+        double cosTheta = cos(theta), sinTheta = sin(theta);
+        double x0 = rho * cosTheta, y0 = rho * sinTheta;
+        pt1.x = cvRound(x0 + 1000 * (-sinTheta));
+        pt1.y = cvRound(y0 + 1000 * (cosTheta));
+        pt2.x = cvRound(x0 - 1000 * (-sinTheta));
+        pt2.y = cvRound(y0 - 1000 * (cosTheta));
         cv::line(img, pt1, pt2, color, 1, CV_AA);
     }
 }
@@ -155,6 +155,33 @@ bool SpreadsheetRecognition::witnessVLine(int x, int y, int radius) {
             return true;
     }
     return false;
+}
+
+Point2d SpreadsheetRecognition::crossLines(const Vec2f &line1, const Vec2f &line2) {
+    double rho1 = line1[0], rho2 = line2[0];
+    double theta1 = line1[1], theta2 = line2[1];
+    double cosTheta1 = cos(theta1), cosTheta2 = cos(theta2);
+    double sinTheta1 = sin(theta1), sinTheta2 = sin(theta2);
+    double denominator = cosTheta1 * sinTheta2 - sinTheta1 * cosTheta2;
+    double x = rho1 * sinTheta2 - rho2 * sinTheta1;
+    double y = rho2 * cosTheta1 - rho1 * cosTheta2;
+    return Point2d(x, y);
+}
+
+Point2d SpreadsheetRecognition::crossWithHorizontalLine(const Vec2f &line, const double y) {
+    double rho = line[0], theta = line[1];
+    CV_Assert((theta - CV_PI / 2) > 10e-5);
+    double cosTheta = cos(theta), sinTheta = sin(theta);
+    double x = (rho - y * sinTheta) / cosTheta;
+    return Point2d(x, y);
+}
+
+Point2d SpreadsheetRecognition::crossWithVerticalLine(const Vec2f &line, const double x) {
+    double rho = line[0], theta = line[1];
+    CV_Assert(theta > 10e-5);
+    double cosTheta = cos(theta), sinTheta = sin(theta);
+    double y = (rho - x * cosTheta) / sinTheta;
+    return Point2d(x, y);
 }
 
 bool SpreadsheetRecognition::isVLine(Vec2f &line, int tryCount, double expectation) {

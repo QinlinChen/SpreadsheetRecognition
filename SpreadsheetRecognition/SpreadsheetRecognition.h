@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <random>
+#include <iostream>
 
 #define DEBUG
 
@@ -43,12 +44,15 @@ private:
     template<class Ty>
     void showlines(Ty &lines) {
         for (auto &line : lines)
-            cout << line << endl;
+            std::cout << line << std::endl;
     }
 
     static void drawLines(cv::Mat &img, std::vector<cv::Vec2f> &lines, const cv::Scalar &color);
     static bool compVec2f(const cv::Vec2f &lhs, const cv::Vec2f &rhs);
     void classifyLines(float deltaTheta);
+    cv::Point2d crossLines(const cv::Vec2f &line1, const cv::Vec2f &line2);
+    cv::Point2d crossWithHorizontalLine(const cv::Vec2f &line, const double y);
+    cv::Point2d crossWithVerticalLine(const cv::Vec2f &line, const double y);
     bool witnessHLine(int x, int y, int radius);
     bool witnessVLine(int x, int y, int radius);
     bool isHLine(cv::Vec2f &line, int tryCount, double expectation);
