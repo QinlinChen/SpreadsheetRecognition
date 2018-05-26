@@ -18,9 +18,15 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="SpreadsheetRecognition.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Stopwatch.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SpreadsheetRecognition.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

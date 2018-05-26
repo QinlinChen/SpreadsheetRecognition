@@ -146,8 +146,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="SpreadsheetRecognition.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="SpreadsheetRecognition.h" />
     <ClInclude Include="Stopwatch.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
