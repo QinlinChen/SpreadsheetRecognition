@@ -13,6 +13,7 @@ void onChange(int, void *) {
     SpreadsheetRecognition SR(src);
     SR.execute(para);
     SR.showResult(windowName);
+    SR.output(".");
 }
 
 int main(int argc, char** argv) {

@@ -14,8 +14,8 @@ struct SpreadsheetRecognitionParameters {
         cannyApertureSize(5),
         houghThreshold(200),
         classifyLinesDeltaTheta(CV_PI / 180),
-        probFilterLinesTryCount(200),
-        probFilterLinesExpectation(0.5),
+        probFilterLinesTryCount(1000),
+        probFilterLinesExpectation(0.7),
         clusterFilterLinesDeltaRho(10.0F) {}
 
     int gaussianSize;
@@ -50,8 +50,10 @@ private:
     static bool compVec2f(const cv::Vec2f &lhs, const cv::Vec2f &rhs);
     void classifyLines(float deltaTheta);
     bool witnessHLine(int x, int y, int radius);
+    bool witnessVLine(int x, int y, int radius);
     bool isHLine(cv::Vec2f &line, int tryCount, double expectation);
-    void probFilterHLines(int tryCount, double expectation);
+    bool isVLine(cv::Vec2f &line, int tryCount, double expectation);
+    void probFilterLines(int tryCount, double expectation);
     void clusterFilterLines(std::vector<cv::Vec2f> &lines, float deltaRho);
 
     cv::Mat mSrc, mSrcGray, resultView;
