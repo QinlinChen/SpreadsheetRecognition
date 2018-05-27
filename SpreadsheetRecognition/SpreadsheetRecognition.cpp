@@ -24,33 +24,31 @@ void SpreadsheetRecognition::execute(const SpreadsheetRecognitionParameters &par
     cout << "Preprocess time: " << timer << endl;
     cvtColor(mSrcGray, resultView, CV_GRAY2BGR);
 
-
     // detect lines
     timer.reset();
     HoughLines(mSrcGray, mLines, 1, CV_PI / 180, para.houghThreshold);
     cout << "HoughLines time: " << timer << endl;
-    //drawLines(resultView, mLines, SCALAR_RED);
-
+    // drawLines(resultView, mLines, SCALAR_RED);
 
     // process lines
     timer.reset();
     classifyLines(para.classifyLinesDeltaTheta);
     cout << "classifyLines time: " << timer << endl;
-    drawLines(resultView, mHLines, SCALAR_YELLOW);
-    drawLines(resultView, mVLines, SCALAR_YELLOW);
+    // drawLines(resultView, mHLines, SCALAR_YELLOW);
+    // drawLines(resultView, mVLines, SCALAR_YELLOW);
 
     timer.reset();
     probFilterLines(para.probFilterLinesTryCount, para.probFilterLinesExpectation);
     cout << "probFilterLines time: " << timer << endl;
-    drawLines(resultView, mHLines, SCALAR_BLUE);
-    drawLines(resultView, mVLines, SCALAR_BLUE);
+    // drawLines(resultView, mHLines, SCALAR_BLUE);
+    // drawLines(resultView, mVLines, SCALAR_BLUE);
 
     timer.reset();
     clusterFilterLines(mHLines, para.clusterFilterLinesDeltaRho);
     clusterFilterLines(mVLines, para.clusterFilterLinesDeltaRho);
     cout << "clusterFilterLines time: " << timer << endl;
-    drawLines(resultView, mHLines, SCALAR_GREEN);
-    drawLines(resultView, mVLines, SCALAR_GREEN);
+    // drawLines(resultView, mHLines, SCALAR_GREEN);
+    // drawLines(resultView, mVLines, SCALAR_GREEN);
 }
 
 void SpreadsheetRecognition::showResult(const String &windowName) {
