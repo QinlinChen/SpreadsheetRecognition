@@ -4,8 +4,7 @@
 #include <time.h>
 #include <iostream>
 
-class Stopwatch
-{
+class Stopwatch {
 public:
 	Stopwatch() : start(clock()) {}
 	~Stopwatch() = default;
@@ -17,10 +16,6 @@ private:
 	clock_t start;
 };
 
-std::ostream & operator<< (std::ostream & os, const Stopwatch & timer)
-{
-	os << timer.elaspedTime() << " seconds";
-	return os;
-}
+std::ostream & operator<< (std::ostream &os, const Stopwatch &timer);
 
 #endif

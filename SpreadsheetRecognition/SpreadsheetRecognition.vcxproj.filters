@@ -21,6 +21,9 @@
     <ClCompile Include="SpreadsheetRecognition.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Stopwatch.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Stopwatch.h">

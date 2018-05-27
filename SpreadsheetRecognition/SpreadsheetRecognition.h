@@ -9,8 +9,9 @@
 
 struct SpreadsheetRecognitionParameters {
     SpreadsheetRecognitionParameters() :
-        gaussianSize(3),
-        cannyThreshold(40),
+        // All default parameters that SpreadsheetRecognition uses
+        gaussianSize(2),
+        cannyThreshold(50),
         cannyRatio(3),
         cannyApertureSize(5),
         houghThreshold(200),
@@ -47,16 +48,20 @@ private:
             std::cout << line << std::endl;
     }
 
-    static void drawLines(cv::Mat &img, std::vector<cv::Vec2f> &lines, const cv::Scalar &color);
+    static void drawLines(cv::Mat &img, const std::vector<cv::Vec2f> &lines, const cv::Scalar &color);
     static bool compVec2f(const cv::Vec2f &lhs, const cv::Vec2f &rhs);
+    static cv::Point2d crossLines(const cv::Vec2f &line1, const cv::Vec2f &line2);
+    static cv::Point2d crossWithHorizontalLine(const cv::Vec2f &line, const double y);
+    static cv::Point2d crossWithVerticalLine(const cv::Vec2f &line, const double y);
+    static bool isHorizontalLine(const double theta);
+    static bool isVerticalLine(const double theta);
+
     void classifyLines(float deltaTheta);
-    cv::Point2d crossLines(const cv::Vec2f &line1, const cv::Vec2f &line2);
-    cv::Point2d crossWithHorizontalLine(const cv::Vec2f &line, const double y);
-    cv::Point2d crossWithVerticalLine(const cv::Vec2f &line, const double y);
     bool witnessHLine(int x, int y, int radius);
     bool witnessVLine(int x, int y, int radius);
-    bool isHLine(cv::Vec2f &line, int tryCount, double expectation);
-    bool isVLine(cv::Vec2f &line, int tryCount, double expectation);
+    bool witnessPoint(int x, int y, int radius);
+    bool isSpreadsheetHLine(const cv::Vec2f &line, int tryCount, double expectation);
+    bool isSpreadsheetVLine(const cv::Vec2f &line, int tryCount, double expectation);
     void probFilterLines(int tryCount, double expectation);
     void clusterFilterLines(std::vector<cv::Vec2f> &lines, float deltaRho);
 

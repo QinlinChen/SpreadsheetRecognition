@@ -2,61 +2,60 @@
 #include <sstream>
 #include <iostream>
 #include "SpreadsheetRecognition.h"
-using cv::Mat;
-using cv::String;
-using cv::Vec2f;
-using cv::Vec3f;
-using cv::Rect;
-using cv::Scalar;
-using cv::Point;
-using cv::Point2d;
-using std::string;
-using std::vector;
-using std::cout;
-using std::endl;
-using std::ostringstream;
-using std::default_random_engine;
-using std::uniform_int_distribution;
+#include "Stopwatch.h"
+using namespace cv;
+using namespace std;
+
+#define SCALAR_RED      Scalar(0, 0, 255)
+#define SCALAR_BLUE     Scalar(255, 0, 0)
+#define SCALAR_GREEN    Scalar(0, 255, 0)
+#define SCALAR_YELLOW   Scalar(0, 255, 255)
 
 default_random_engine SpreadsheetRecognition::e;
 
-#include "Stopwatch.h"
 void SpreadsheetRecognition::execute(const SpreadsheetRecognitionParameters &para) {
     // preprocess
-    cv::cvtColor(mSrc, mSrcGray, CV_RGB2GRAY);
+    Stopwatch timer;
+    cvtColor(mSrc, mSrcGray, CV_RGB2GRAY);
+    CV_Assert(mSrcGray.channels() == 1);
     int ks = 2 * para.gaussianSize + 1;
-    cv::GaussianBlur(mSrcGray, mSrcGray, cv::Size(ks, ks), 0, 0);
-    cv::Canny(mSrcGray, mSrcGray, para.cannyThreshold, para.cannyThreshold * para.cannyRatio,
+    GaussianBlur(mSrcGray, mSrcGray, Size(ks, ks), 0, 0);
+    Canny(mSrcGray, mSrcGray, para.cannyThreshold, para.cannyThreshold * para.cannyRatio,
         para.cannyApertureSize, true);
-#ifdef DEBUG
-    cv::cvtColor(mSrcGray, resultView, CV_GRAY2BGR);
-#endif
+    cout << "Preprocess time: " << timer << endl;
+    cvtColor(mSrcGray, resultView, CV_GRAY2BGR);
+
 
     // detect lines
-    cv::HoughLines(mSrcGray, mLines, 1, CV_PI / 180, para.houghThreshold);
-#ifdef DEBUG
-    drawLines(resultView, mLines, Scalar(0, 0, 255));
-#endif
+    timer.reset();
+    HoughLines(mSrcGray, mLines, 1, CV_PI / 180, para.houghThreshold);
+    cout << "HoughLines time: " << timer << endl;
+    //drawLines(resultView, mLines, SCALAR_RED);
+
 
     // process lines
+    timer.reset();
     classifyLines(para.classifyLinesDeltaTheta);
-#ifdef DEBUG
-    drawLines(resultView, mHLines, Scalar(0, 255, 255));
-    drawLines(resultView, mVLines, Scalar(0, 255, 255));
-#endif
+    cout << "classifyLines time: " << timer << endl;
+    // drawLines(resultView, mHLines, SCALAR_YELLOW);
+    // drawLines(resultView, mVLines, SCALAR_YELLOW);
+
+    timer.reset();
     probFilterLines(para.probFilterLinesTryCount, para.probFilterLinesExpectation);
-#ifdef DEBUG
-    //drawLines(resultView, mHLines, Scalar(255, 0, 0));
-    //drawLines(resultView, mVLines, Scalar(255, 0, 0));
-#endif
-    //clusterFilterLines(mHLines, para.clusterFilterLinesDeltaRho);
-    //clusterFilterLines(mVLines, para.clusterFilterLinesDeltaRho);
-    //drawLines(resultView, mHLines, Scalar(0, 255, 0));
-    //drawLines(resultView, mVLines, Scalar(0, 255, 0));
+    cout << "probFilterLines time: " << timer << endl;
+    drawLines(resultView, mHLines, SCALAR_BLUE);
+    drawLines(resultView, mVLines, SCALAR_BLUE);
+
+    timer.reset();
+    clusterFilterLines(mHLines, para.clusterFilterLinesDeltaRho);
+    clusterFilterLines(mVLines, para.clusterFilterLinesDeltaRho);
+    cout << "clusterFilterLines time: " << timer << endl;
+    drawLines(resultView, mHLines, SCALAR_GREEN);
+    drawLines(resultView, mVLines, SCALAR_GREEN);
 }
 
 void SpreadsheetRecognition::showResult(const String &windowName) {
-    cv::imshow(windowName, resultView);
+    imshow(windowName, resultView);
 }
 
 void SpreadsheetRecognition::output(const string &dir) {
@@ -80,12 +79,12 @@ void SpreadsheetRecognition::output(const string &dir) {
         for (size_t j = 0; j < spreadsheet[i].size(); ++j) {
             ostringstream oss;
             oss << dir << "/output/" << i << "_" << j << ".jpg";
-            cv::imwrite(oss.str(), mSrc(spreadsheet[i][j]));
+            imwrite(oss.str(), mSrc(spreadsheet[i][j]));
         }
     }
 }
 
-void SpreadsheetRecognition::drawLines(Mat &img, vector<Vec2f> &lines, const Scalar &color) {
+void SpreadsheetRecognition::drawLines(Mat &img, const vector<Vec2f> &lines, const Scalar &color) {
     for (size_t i = 0; i < lines.size(); i++) {
         float rho = lines[i][0], theta = lines[i][1];
         Point pt1, pt2;
@@ -95,16 +94,12 @@ void SpreadsheetRecognition::drawLines(Mat &img, vector<Vec2f> &lines, const Sca
         pt1.y = cvRound(y0 + 1000 * (cosTheta));
         pt2.x = cvRound(x0 - 1000 * (-sinTheta));
         pt2.y = cvRound(y0 - 1000 * (cosTheta));
-        cv::line(img, pt1, pt2, color, 1, CV_AA);
+        line(img, pt1, pt2, color, 1, CV_AA);
     }
 }
 
 bool SpreadsheetRecognition::compVec2f(const Vec2f &lhs, const Vec2f &rhs) {
-    if (lhs[0] < rhs[0])
-        return true;
-    if (lhs[0] == rhs[0] && lhs[1] < rhs[1])
-        return true;
-    return false;
+    return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhs[1] < rhs[1]);
 }
 
 void SpreadsheetRecognition::classifyLines(float deltaTheta) {
@@ -123,38 +118,12 @@ void SpreadsheetRecognition::classifyLines(float deltaTheta) {
     std::sort(mVLines.begin(), mVLines.end(), compVec2f);
 }
 
-bool SpreadsheetRecognition::witnessHLine(int x, int y, int radius) {
-    int begin = std::max(y - radius, 0);
-    int end = std::min(y + radius, mSrcGray.rows - 1);
-    for (int iy = begin; iy <= end; ++iy) {
-        if ((uint)mSrcGray.at<uchar>(iy, x) > 200)
-            return true;
-    }
-    return false;
+bool SpreadsheetRecognition::isHorizontalLine(const double theta) {
+    return fabs(theta - CV_PI / 2) < 10e-5;
 }
 
-bool SpreadsheetRecognition::isHLine(Vec2f &line, int tryCount, double expectation) {
-    CV_Assert(mSrcGray.channels() == 1);
-    int y = (int)line[0];
-    int count = 0;
-    uniform_int_distribution<int> g((int)mVLines.front()[0], (int)mVLines.back()[0]);
-
-    for (int i = 0; i < tryCount; ++i) {
-        int x = g(e);
-        if (witnessHLine(x, y, 1))
-            count++;
-    }
-    return ((double)count / tryCount >= expectation);
-}
-
-bool SpreadsheetRecognition::witnessVLine(int x, int y, int radius) {
-    int begin = std::max(x - radius, 0);
-    int end = std::min(x + radius, mSrcGray.cols - 1);
-    for (int ix = begin; ix <= end; ++ix) {
-        if ((uint)mSrcGray.at<uchar>(y, ix) > 200)
-            return true;
-    }
-    return false;
+bool SpreadsheetRecognition::isVerticalLine(const double theta) {
+    return fabs(theta) < 10e-5;
 }
 
 Point2d SpreadsheetRecognition::crossLines(const Vec2f &line1, const Vec2f &line2) {
@@ -170,7 +139,7 @@ Point2d SpreadsheetRecognition::crossLines(const Vec2f &line1, const Vec2f &line
 
 Point2d SpreadsheetRecognition::crossWithHorizontalLine(const Vec2f &line, const double y) {
     double rho = line[0], theta = line[1];
-    CV_Assert((theta - CV_PI / 2) > 10e-5);
+    CV_Assert(!isHorizontalLine(theta));
     double cosTheta = cos(theta), sinTheta = sin(theta);
     double x = (rho - y * sinTheta) / cosTheta;
     return Point2d(x, y);
@@ -178,33 +147,102 @@ Point2d SpreadsheetRecognition::crossWithHorizontalLine(const Vec2f &line, const
 
 Point2d SpreadsheetRecognition::crossWithVerticalLine(const Vec2f &line, const double x) {
     double rho = line[0], theta = line[1];
-    CV_Assert(theta > 10e-5);
+    CV_Assert(!isVerticalLine(theta));
     double cosTheta = cos(theta), sinTheta = sin(theta);
     double y = (rho - x * cosTheta) / sinTheta;
     return Point2d(x, y);
 }
 
-bool SpreadsheetRecognition::isVLine(Vec2f &line, int tryCount, double expectation) {
-    CV_Assert(mSrcGray.channels() == 1);
-    int x = (int)line[0];
+bool SpreadsheetRecognition::witnessHLine(int x, int y, int radius) {
+    int yBegin = std::max(y - radius, 0);
+    int yEnd = std::min(y + radius + 1, mSrcGray.rows);
+    for (int r = yBegin; r < yEnd; ++r) 
+        if ((uint)mSrcGray.at<uchar>(r, x) > 200)
+            return true;
+    return false;
+}
+
+bool SpreadsheetRecognition::witnessVLine(int x, int y, int radius) {
+    int xBegin = std::max(x - radius, 0);
+    int xEnd = std::min(x + radius + 1, mSrcGray.cols);
+    for (int c = xBegin; c < xEnd; ++c) 
+        if ((uint)mSrcGray.at<uchar>(y, c) > 200)
+            return true;
+    return false;
+}
+
+bool SpreadsheetRecognition::witnessPoint(int x, int y, int radius) {
+    int xBegin = std::max(x - radius, 0);
+    int xEnd = std::min(x + radius + 1, mSrcGray.cols);
+    int yBegin = std::max(y - radius, 0);
+    int yEnd = std::min(y + radius + 1, mSrcGray.rows);
+    for (int r = yBegin; r < yEnd; ++r)
+        for (int c = xBegin; c < xEnd; ++c)
+            if ((uint)mSrcGray.at<uchar>(r, c) > 200)
+                return true;
+    return false;
+}
+
+bool SpreadsheetRecognition::isSpreadsheetHLine(const Vec2f &line, int tryCount, double expectation) {
     int count = 0;
-    uniform_int_distribution<int> g((int)mHLines.front()[0], (int)mHLines.back()[0]);
-    for (int i = 0; i < tryCount; ++i) {
-        int y = g(e);
-        if (witnessHLine(x, y, 10))
-            count++;
+    if (isHorizontalLine(line[1])) {
+        // process totally horizontal line, which is faster
+        uniform_int_distribution<int> g((int)mVLines.front()[0], (int)mVLines.back()[0]);
+        int y = cvRound(line[0]);
+        for (int i = 0; i < tryCount; ++i) 
+            if (witnessHLine(g(e), y, 1))
+                count++;
     }
-    cout << count << endl;
+    else {
+        // process oblique line
+        static uniform_real_distribution<double> g(0.0, 1.0);
+        Point2d p1 = crossWithVerticalLine(line, mVLines.front()[0]);
+        Point2d p2 = crossWithVerticalLine(line, mVLines.back()[0]);
+        for (int i = 0; i < tryCount; ++i) {
+            double lambda = g(e);
+            Point2d randomPoint = (p1 + lambda * p2) / (1 + lambda);
+            if (witnessPoint(cvRound(randomPoint.x), cvRound(randomPoint.y), 1))
+                count++;
+        }
+    }
+    // cout << count << endl;
+    return ((double)count / tryCount >= expectation);
+}
+
+bool SpreadsheetRecognition::isSpreadsheetVLine(const Vec2f &line, int tryCount, double expectation) {
+    int count = 0;
+
+    if (isVerticalLine(line[1])) {
+        // process totally vertical line, which is faster
+        uniform_int_distribution<int> g((int)mHLines.front()[0], (int)mHLines.back()[0]);
+        int x = cvRound(line[0]);
+        for (int i = 0; i < tryCount; ++i) 
+            if (witnessPoint(x, g(e), 1))
+                count++;
+    }
+    else {
+        // process oblique line
+        static uniform_real_distribution<double> g(0.0, 1.0);
+        Point2d p1 = crossWithHorizontalLine(line, mHLines.front()[0]);
+        Point2d p2 = crossWithHorizontalLine(line, mHLines.back()[0]);
+        for (int i = 0; i < tryCount; ++i) {
+            double lambda = g(e);
+            Point2d randomPoint = (p1 + lambda * p2) / (1 + lambda);
+            if (witnessPoint(cvRound(randomPoint.x), cvRound(randomPoint.y), 1))
+                count++;
+        }
+    }
+    // cout << count << endl;
     return ((double)count / tryCount >= expectation);
 }
 
 void SpreadsheetRecognition::probFilterLines(int tryCount, double expectation) {
     vector<Vec2f> filteredHLines, filteredVLines;
     for (auto &line : mHLines)
-        if (isHLine(line, tryCount, expectation))
+        if (isSpreadsheetHLine(line, tryCount, expectation))
             filteredHLines.push_back(line);
     for (auto &line : mVLines)
-        if (isVLine(line, tryCount, expectation))
+        if (isSpreadsheetVLine(line, tryCount, expectation))
             filteredVLines.push_back(line);
     mHLines = filteredHLines;
     mVLines = filteredVLines;
