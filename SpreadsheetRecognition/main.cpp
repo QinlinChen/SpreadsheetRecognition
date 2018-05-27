@@ -5,13 +5,17 @@
 using namespace cv;
 using namespace std;
 
+// #define DEBUG
+
 string windowName = "Edge Detect";
 SpreadsheetRecognitionParameters para;
 Mat src;
 
 void onChange(int, void *) {
     SpreadsheetRecognition SR(src);
+    Stopwatch timer;
     SR.execute(para);
+    cout << "Total: " <<timer << endl;
     SR.showResult(windowName);
     //SR.output(".");
 }
@@ -32,11 +36,7 @@ int main(int argc, char** argv) {
     createTrackbar("Hough:", windowName, &para.houghThreshold, para.maxHoughThreshold, onChange);
 #endif
 
-    Stopwatch timer;
     onChange(0, 0);
-    cout << timer << endl;
-
-    // imwrite("output.jpg", dst);
 
     waitKey(0);
     return 0;

@@ -5,8 +5,6 @@
 #include <random>
 #include <iostream>
 
-#define DEBUG
-
 struct SpreadsheetRecognitionParameters {
     SpreadsheetRecognitionParameters() :
         // All default parameters that SpreadsheetRecognition uses
@@ -15,13 +13,15 @@ struct SpreadsheetRecognitionParameters {
         cannyRatio(3),
         cannyApertureSize(5),
         houghThreshold(200),
-        classifyLinesDeltaTheta(CV_PI / 180),
+        classifyLinesDeltaTheta((float)(CV_PI / 180)),
         probFilterLinesTryCount(1000),
         probFilterLinesExpectation(0.7),
         clusterFilterLinesDeltaRho(10.0F) {}
 
     int gaussianSize;
-    int cannyThreshold, cannyRatio, cannyApertureSize;
+    int cannyThreshold;
+    int cannyRatio;
+    int cannyApertureSize;
     int houghThreshold;
     float classifyLinesDeltaTheta;
     int probFilterLinesTryCount;
@@ -53,8 +53,8 @@ private:
     static cv::Point2d crossLines(const cv::Vec2f &line1, const cv::Vec2f &line2);
     static cv::Point2d crossWithHorizontalLine(const cv::Vec2f &line, const double y);
     static cv::Point2d crossWithVerticalLine(const cv::Vec2f &line, const double y);
-    static bool isHorizontalLine(const double theta);
-    static bool isVerticalLine(const double theta);
+    static bool isHorizontalLine(const double theta, const double deltaTheta = 10e-5);
+    static bool isVerticalLine(const double theta, const double deltaTheta = 10e-5);
 
     void classifyLines(float deltaTheta);
     bool witnessHLine(int x, int y, int radius);

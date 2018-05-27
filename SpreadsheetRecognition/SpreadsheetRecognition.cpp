@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <sstream>
-#include <iostream>
 #include "SpreadsheetRecognition.h"
 #include "Stopwatch.h"
 using namespace cv;
@@ -37,8 +36,8 @@ void SpreadsheetRecognition::execute(const SpreadsheetRecognitionParameters &par
     timer.reset();
     classifyLines(para.classifyLinesDeltaTheta);
     cout << "classifyLines time: " << timer << endl;
-    // drawLines(resultView, mHLines, SCALAR_YELLOW);
-    // drawLines(resultView, mVLines, SCALAR_YELLOW);
+    drawLines(resultView, mHLines, SCALAR_YELLOW);
+    drawLines(resultView, mVLines, SCALAR_YELLOW);
 
     timer.reset();
     probFilterLines(para.probFilterLinesTryCount, para.probFilterLinesExpectation);
@@ -102,28 +101,26 @@ bool SpreadsheetRecognition::compVec2f(const Vec2f &lhs, const Vec2f &rhs) {
     return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhs[1] < rhs[1]);
 }
 
-void SpreadsheetRecognition::classifyLines(float deltaTheta) {
-    const float hTheta = CV_PI / 2.0, vTheta = 0.0;
+bool SpreadsheetRecognition::isHorizontalLine(const double theta, const double deltaTheta) {
+    return fabs(theta - CV_PI / 2) <= deltaTheta;
+}
 
+bool SpreadsheetRecognition::isVerticalLine(const double theta, const double deltaTheta) {
+    return fabs(theta) <= deltaTheta;
+}
+
+void SpreadsheetRecognition::classifyLines(float deltaTheta) {
     mHLines.clear();
     mVLines.clear();
     for (auto &line : mLines) {
         float rho = line[0], theta = line[1];
-        if (fabs(theta - hTheta) <= deltaTheta && rho >= 0 && rho < mSrcGray.rows)
+        if (isHorizontalLine(theta, deltaTheta) && rho >= 0 && rho < mSrcGray.rows)
             mHLines.push_back(line);
-        else if (fabs(theta - vTheta) <= deltaTheta && rho >= 0 && rho < mSrcGray.cols)
+        else if (isVerticalLine(theta, deltaTheta) && rho >= 0 && rho < mSrcGray.cols)
             mVLines.push_back(line);
     }
     std::sort(mHLines.begin(), mHLines.end(), compVec2f);
     std::sort(mVLines.begin(), mVLines.end(), compVec2f);
-}
-
-bool SpreadsheetRecognition::isHorizontalLine(const double theta) {
-    return fabs(theta - CV_PI / 2) < 10e-5;
-}
-
-bool SpreadsheetRecognition::isVerticalLine(const double theta) {
-    return fabs(theta) < 10e-5;
 }
 
 Point2d SpreadsheetRecognition::crossLines(const Vec2f &line1, const Vec2f &line2) {
@@ -132,8 +129,8 @@ Point2d SpreadsheetRecognition::crossLines(const Vec2f &line1, const Vec2f &line
     double cosTheta1 = cos(theta1), cosTheta2 = cos(theta2);
     double sinTheta1 = sin(theta1), sinTheta2 = sin(theta2);
     double denominator = cosTheta1 * sinTheta2 - sinTheta1 * cosTheta2;
-    double x = rho1 * sinTheta2 - rho2 * sinTheta1;
-    double y = rho2 * cosTheta1 - rho1 * cosTheta2;
+    double x = (rho1 * sinTheta2 - rho2 * sinTheta1) / denominator;
+    double y = (rho2 * cosTheta1 - rho1 * cosTheta2) / denominator;
     return Point2d(x, y);
 }
 
@@ -154,30 +151,32 @@ Point2d SpreadsheetRecognition::crossWithVerticalLine(const Vec2f &line, const d
 }
 
 bool SpreadsheetRecognition::witnessHLine(int x, int y, int radius) {
-    int yBegin = std::max(y - radius, 0);
-    int yEnd = std::min(y + radius + 1, mSrcGray.rows);
-    for (int r = yBegin; r < yEnd; ++r) 
-        if ((uint)mSrcGray.at<uchar>(r, x) > 200)
+    int rBegin = std::max(y - radius, 0);
+    int rEnd = std::min(y + radius + 1, mSrcGray.rows);
+    int c = std::min(std::max(x, 0), mSrcGray.cols);
+    for (int r = rBegin; r < rEnd; ++r) 
+        if ((uint)mSrcGray.at<uchar>(r, c) > 200)
             return true;
     return false;
 }
 
 bool SpreadsheetRecognition::witnessVLine(int x, int y, int radius) {
-    int xBegin = std::max(x - radius, 0);
-    int xEnd = std::min(x + radius + 1, mSrcGray.cols);
-    for (int c = xBegin; c < xEnd; ++c) 
-        if ((uint)mSrcGray.at<uchar>(y, c) > 200)
+    int cBegin = std::max(x - radius, 0);
+    int cEnd = std::min(x + radius + 1, mSrcGray.cols);
+    int r = std::min(std::max(y, 0), mSrcGray.rows);
+    for (int c = cBegin; c < cEnd; ++c) 
+        if ((uint)mSrcGray.at<uchar>(r, c) > 200)
             return true;
     return false;
 }
 
 bool SpreadsheetRecognition::witnessPoint(int x, int y, int radius) {
-    int xBegin = std::max(x - radius, 0);
-    int xEnd = std::min(x + radius + 1, mSrcGray.cols);
-    int yBegin = std::max(y - radius, 0);
-    int yEnd = std::min(y + radius + 1, mSrcGray.rows);
-    for (int r = yBegin; r < yEnd; ++r)
-        for (int c = xBegin; c < xEnd; ++c)
+    int cBegin = std::max(x - radius, 0);
+    int cEnd = std::min(x + radius + 1, mSrcGray.cols);
+    int rBegin = std::max(y - radius, 0);
+    int rEnd = std::min(y + radius + 1, mSrcGray.rows);
+    for (int r = rBegin; r < rEnd; ++r)
+        for (int c = cBegin; c < cEnd; ++c)
             if ((uint)mSrcGray.at<uchar>(r, c) > 200)
                 return true;
     return false;
@@ -217,7 +216,7 @@ bool SpreadsheetRecognition::isSpreadsheetVLine(const Vec2f &line, int tryCount,
         uniform_int_distribution<int> g((int)mHLines.front()[0], (int)mHLines.back()[0]);
         int x = cvRound(line[0]);
         for (int i = 0; i < tryCount; ++i) 
-            if (witnessPoint(x, g(e), 1))
+            if (witnessVLine(x, g(e), 1))
                 count++;
     }
     else {
